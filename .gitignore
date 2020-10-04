@@ -33,6 +33,9 @@
 
 CMakeLists.txt.user
 build/
+build-release/
+build-profile/
 release/
 
 .vs/
+.ccls-cache/

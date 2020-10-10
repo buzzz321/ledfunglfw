@@ -26,7 +26,11 @@ if(WIN32)
 	#find_package(sdl2 CONFIG REQUIRED)
 	#find_package(sdl2-image CONFIG REQUIRED)
 else()
-    find_package(glfw3 3.3 REQUIRED)
+  find_package(glfw3 3.3 REQUIRED)
+  
+if(NOT GLM_FOUND)
+        message(Error "GLM not found")
+endif(NOT GLM_FOUND)
 endif()
 include_directories(${SDL2_INCLUDE_DIRS} ${SDL2IMAGE_INCLUDE_DIRS})
 

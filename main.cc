@@ -138,10 +138,11 @@ std::vector<float> generatedLedVertices(std::vector<float> &led,
 
 void dropLed(std::vector<glm::vec3> &leds, uint32_t amount, float zFar) {
   auto noLeds = leds.size();
-
+  uint32_t iterations{0};
   uint32_t i{0};
 
-  while (i < amount) {
+  while (i < amount && iterations < noLeds) {
+    iterations++;
     auto index = rand() % (noLeds - 1);
     if (leds[index].z < LED_FLOOR + 1.0f) {
       // std::cout << "dropping led at index " << index << std::endl;
@@ -263,7 +264,7 @@ int main() {
       glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
-    dropLed(leds, 1, zFar);
+    dropLed(leds, 2, zFar);
 
     glfwSwapBuffers(window);
     // Keep running

@@ -9,6 +9,7 @@
 constexpr int32_t SCREEN_WIDTH = 1600;
 constexpr int32_t SCREEN_HEIGHT = 1100;
 constexpr float fov = glm::radians(90.0f);
+constexpr float LED_FLOOR = 60.0f;
 
 constexpr auto vertexShaderSource = R"(
 #version 330 core
@@ -67,16 +68,17 @@ unsigned int makeShaderProgram(uint32_t vertexShader, uint32_t fragmentShader) {
 }
 
 void error_callback(int error, const char *description) {
-  std::cerr << "Error: " << description << std::endl;
+  std::cerr << "Error: " << description << " error number " << error
+            << std::endl;
 }
 
-void key_callback(GLFWwindow *window, int key, int scancode, int action,
-                  int mods) {
+void key_callback(GLFWwindow *window, int key, int /*scancode*/, int action,
+                  int /*mods*/) {
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow * /*window*/, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
@@ -96,6 +98,7 @@ void camera(uint32_t shaderId) {
   //            << " z = " << cameraPos.z << " zFar = " << zFar << " tan µ "
   //            << tanf64(fov / 2.0f) << " fov " << fov << std::endl;
   // glm::vec3 cameraFront = glm::vec3(32.0f, 32.0f, -1.0f);
+
   glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
   view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
@@ -112,7 +115,7 @@ std::vector<glm::vec3> generateLeds(uint32_t amount) {
                            amount / 2.0f * newParameter,
                        SCREEN_HEIGHT / 2.0 + (float)y * newParameter -
                            amount / 2.0f * newParameter,
-                       0.0f);
+                       LED_FLOOR);
       std::cout << vertex.x << " " << vertex.y << " " << vertex.z << std::endl;
 
       retVal.push_back(vertex);
@@ -133,6 +136,21 @@ std::vector<float> generatedLedVertices(std::vector<float> &led,
   return retVal;
 }
 
+void dropLed(std::vector<glm::vec3> &leds, uint32_t amount, float zFar) {
+  auto noLeds = leds.size();
+
+  uint32_t i{0};
+
+  while (i < amount) {
+    auto index = rand() % (noLeds - 1);
+    if (leds[index].z < LED_FLOOR + 1.0f) {
+      // std::cout << "dropping led at index " << index << std::endl;
+      leds[index].z = zFar + rand() % (5 - 1);
+      i++;
+    }
+  }
+}
+
 int main() {
   std::vector<float> led = {
       0.5f,  0.5f, 0.0f, 0.5f,  -0.5f, 0.0f, -0.5f, 0.5f,  0.0f,
@@ -141,6 +159,10 @@ int main() {
 
   auto leds = generateLeds(64);
   auto ledVertices = generatedLedVertices(led, 32);
+  float deltaTime = 0.0f; // Time between current frame and last frame
+  float lastFrame = 0.0f; // Time of last frame
+
+  srand(time(NULL));
 
   if (!glfwInit()) {
     // Initialization failed
@@ -191,7 +213,14 @@ int main() {
   glm::mat4 projection = glm::perspective(
       fov, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, zFar);
 
+  glm::vec3 movement(0.0f, 0.0f, LED_FLOOR);
+  glm::vec3 dz(0.0, 0.0, 1.0);
+
   while (!glfwWindowShouldClose(window)) {
+    float currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
+
     processInput(window);
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -211,14 +240,30 @@ int main() {
       // std::cout<<poly.x<<" "<< poly.y<< " " <<poly.z<<std::endl;
 
       glm::mat4 model = glm::mat4(1.0f);
+      model = glm::rotate(model, glm::radians(-2.8f), glm::vec3(1.0, 0.0, 0.0));
+
       model = glm::translate(model, poly);
       model = glm::scale(model, glm::vec3(8.0, 8.0, 1.0));
 
       int modelLoc = glGetUniformLocation(shaderProgram, "model");
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
+      dz.z = 64.0f * deltaTime / 1.0f;
+      /*std::cout << "poly.z " << poly.z << " deltatime " << deltaTime
+                << std::endl;
+    */ // movement = movement + dz;
+      if (poly.z > LED_FLOOR + 1.0f) {
+        poly -= dz;
+      }
+      if (poly.z < LED_FLOOR) {
+        poly.z = LED_FLOOR;
+        std::cout << "resetting z axis" << std::endl;
+      }
+
       glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+
+    dropLed(leds, 1, zFar);
 
     glfwSwapBuffers(window);
     // Keep running

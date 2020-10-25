@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <mikmod.h>
 #include <vector>
 
 constexpr int32_t SCREEN_WIDTH = 1600;
@@ -152,6 +153,25 @@ void dropLed(std::vector<glm::vec3> &leds, uint32_t amount, float zFar) {
   }
 }
 
+MODULE *initMikMod() {
+  MODULE *module{nullptr};
+
+  /* register all the drivers */
+  MikMod_RegisterAllDrivers();
+
+  /* register all the module loaders */
+  MikMod_RegisterAllLoaders();
+
+  /* initialize the library */
+  md_mode |= DMODE_SOFT_MUSIC;
+  if (MikMod_Init("")) {
+    fprintf(stderr, "Could not initialize sound, reason: %s\n",
+            MikMod_strerror(MikMod_errno));
+    return nullptr;
+  }
+  module = Player_Load("resonance2.mod", 64, 0);
+  return module;
+}
 int main() {
   std::vector<float> led = {
       0.5f,  0.5f, 0.0f, 0.5f,  -0.5f, 0.0f, -0.5f, 0.5f,  0.0f,
@@ -217,12 +237,24 @@ int main() {
   glm::vec3 movement(0.0f, 0.0f, LED_FLOOR);
   glm::vec3 dz(0.0, 0.0, 1.0);
 
+  auto module = initMikMod();
+  if (module) {
+    /* start module */
+
+    Player_Start(module);
+    Player_SetVolume(32);
+  }
+
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;
 
     processInput(window);
+
+    if (Player_Active()) {
+      MikMod_Update();
+    }
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT |
@@ -270,6 +302,10 @@ int main() {
     // Keep running
     glfwPollEvents();
   }
+
+  Player_Stop();
+  Player_Free(module);
+  MikMod_Exit();
 
   glDeleteVertexArrays(1, &VAO);
   glDeleteBuffers(1, &VBO);

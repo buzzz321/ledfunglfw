@@ -44,6 +44,6 @@ add_executable(${CMAKE_PROJECT_NAME} ${SRCS})
 if(WIN32)
 	#target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2::SDL2_image)
 else()
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw dl m)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw dl mikmod m)
 endif()
 
